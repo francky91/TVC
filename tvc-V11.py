@@ -604,7 +604,7 @@ def repartir_poules_sans_conflit(fichier_entree, feuille_source_resultat, nb_pou
     fichierWord=f'{feuille_source_resultat}_{tourActif}.docx'
     ecrire_document_word(fichierWord, feuille_source_resultat, top_poules, poules)
     # Générer le fichier JSON
-    #ecrire_fichier_json(feuille_source_resultat, tourActif, top_poules, poules)
+    ecrire_fichier_json(feuille_source_resultat, tourActif, top_poules, poules)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Repartir les poules en fonction des joueurs et des options.")
