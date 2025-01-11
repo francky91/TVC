@@ -2,6 +2,12 @@
 Fichiers pour le logiciel du TVC
 
 TVC.py
+11/01/2025:
+  Changement ordre de rencontres en poules (1-4, 2-3, 1-3, 2-4, 1-2, 3-4)
+  Ajout d'un fichier config.ini, ou sont renseignés le path et le fichier excel.
+  Ne pas oublier d'ajouter aussi le fichier utils.py
+  Ajout du nombre de tops par défaut par catgegorie s'il n'est pas renseigné dans la ligne de commande 
+    (pour avoir par défaut 0 tops pour les féminines)
 08/01/2025:
   Ajout tvc-V11.py
     Principales modifications:
