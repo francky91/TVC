@@ -26,13 +26,19 @@ TVC.py
     Ajout V10
 
 Saisie-Resultats-Poules.py
+13/01/2025:
+  Ajout V2.3. Est lancé par General.py
 07/01/2025:
    Ajout
 
 Saisie-Tournoi.py
+13/01/2025:
+  Ajout V1. Est lancé par General.py
 07/01/2025!
     Ajout
 
 General.py
-07/01/2025:
+13/01/2025:
+  Non instancié par version. Est testé avec 13/01/2025 V2.3 et Saisie-Tournoi V1
+07/01/2025: 
     Ajout
