@@ -6,6 +6,7 @@ import subprocess
 # Dictionnaires pour suivre les fenêtres ouvertes par catégorie
 opened_windows_poules = {}
 opened_windows_tableaux = {}
+opened_windows_intertops = {}
 
 def check_all_processes():
     """Vérifie l'état de tous les processus ouverts."""
@@ -28,7 +29,7 @@ def open_app(category, round_number, app_type):
         if category in opened_windows_poules:
             messagebox.showwarning("Attention", f"L'application pour la catégorie '{category}' (Poules) est déjà ouverte.")
             return
-        app_name = 'saisie-resultats-poules-V2.2.py'
+        app_name = 'saisie-resultats-poules-V2.3.py'
         opened_windows = opened_windows_poules
     elif app_type == "tableaux":
         if category in opened_windows_tableaux:
