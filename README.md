@@ -1,5 +1,9 @@
 # TVC
 Fichiers pour le logiciel du TVC
+Le 15/01/2024
+
+Ajout General-V1.2 avec resultats-poules-V2.4, Tournoi-V1.2 et config.ini
+
 
 TVC.py
 11/01/2025:
