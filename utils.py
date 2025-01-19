@@ -30,3 +30,13 @@ def charger_config_categorie(config_file, categorie):
     nbTopsDefaut = config.get("TopsDefaut", categorie, fallback=".")
 
     return nbTopsDefaut
+    
+def lire_prg_config(config_file):
+    
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    
+    poules_prg = config.get("Versions", "PoulesPy", fallback=".")
+    tableau_py = config.get("Versions", "TableauPy", fallback=".")
+    
+    return poules_prg,tableau_py
