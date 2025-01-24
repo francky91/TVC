@@ -1,10 +1,34 @@
 # TVC
 Fichiers pour le logiciel du TVC
+
+Le 24/01/2025
+Ajout General-V1.3 avec resultats-poules-V2.6, Tournoi-V1.4 et config.ini
+ainsi que les modules SaisieMatch, json_access, utils, config, logic
+
+Le fichier config.ini permet de définir
+[Paths]
+directory = C:\\Users\\franck\\TVC\\
+input_file = TVC2425.xlsx  -> Nom fichier TVC
+directoryJson = C:\\Users\\franck\\TVC\\Json  -> Rep. JSON
+directoryExcel = C:\\Users\\franck\\TVC\\Excel -> Rep. Excel (fichier TVC)
+directoryWord = C:\\Users\\franck\\TVC\\Word -> Rep. Poules
+
+[Versions]
+TableauPy = Saisie-Tournoi-V1.4.py
+PoulesPy = saisie-resultats-poules-V2.6.py
+
+[TopsDefaut]
+Poussins = 2
+Benjamins = 2
+Minimes = 2
+Cadets-Juniors = 2
+Feminines = 0
+
 Le 17/01/2024
 
 resultats-poules-V2.5, Tournoi-V1.3 et config.ini
 
-Le 15/01/2024
+Le 15/01/2025
 
 Ajout General-V1.2 avec resultats-poules-V2.4, Tournoi-V1.2 et config.ini
 
