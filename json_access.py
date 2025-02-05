@@ -13,7 +13,7 @@ def load_tableau(json_file, all = False):
             data = json.load(f)
     except FileNotFoundError:
         #messagebox.showerror("Erreur", f"Fichier {json_file} non trouvé")
-        print(f"ichier {json_file} non trouvé")
+        print(f"fichier {json_file} non trouvé")
         return {},{}
             
     if (all):
@@ -69,7 +69,8 @@ def save_tableau(json_file, tableau_data):
         json_file = os.path.join(directory, json_file)
         with open(json_file, "w", encoding="utf-8") as f:
                 json.dump(tableau_data, f, indent=4, ensure_ascii=False)
-        messagebox.showinfo("Info", f"Tableaux enregistrés dans {json_file}.")
+        #messagebox.showinfo("Info", f"Tableaux enregistrés dans {json_file}.")
+        print(f"Tableaux enregistrés dans {json_file}.")
         return True
     except Exception as e:
         messagebox.showerror("Erreur", f"Erreur lors de l'enregistrement des tableaux : {e}")
@@ -81,7 +82,8 @@ def save_poules(json_file, data):
         json_file = os.path.join(directory, json_file)
         with open(json_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
-        messagebox.showinfo("Succès", f"Résultats enregistrés dans {json_file}.")
+        #messagebox.showinfo("Succès", f"Résultats enregistrés dans {json_file}.")
+        print(f"Résultats enregistrés dans {json_file}.")
         return True
     except Exception as e:
         messagebox.showerror("Erreur", f"Erreur lors de l'enregistrement : {e}")
