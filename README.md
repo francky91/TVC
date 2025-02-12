@@ -1,6 +1,31 @@
 # TVC
 Fichiers pour le logiciel du TVC
 
+Le 12/02/2025:
+Ajout tvc-V16
+Ajout General-V1.4 avec resultats-poules-V2.7, Tournoi-V1.5 et nouveau utils.py
+
+Evolutions:
+tvc-V16:
+- Mise à jour dans le fichier Word des bonnes oppositions
+- Ajout ligne totale
+- Aggrandissement de la derniere ligne (du coup seulement 4 poules par page au lieu de 6)
+- Prise en compte des dossards dans le json
+
+General-V1.4:
+- Affichage des tours uniquement connus (ceux dont il existe un json)
+
+Saisie-resultats-poules:
+- Plein, je sais plus lesquels 🙂
+
+Saisie-Tournoi:
+entre autres:
+- Ajout du dossard sous forme de tooltip
+- Ajout au titre: Tournoi OK|KO <Categorie> Tour<Tour>
+- Ajout en entete du table le niveau (1/16, 1/8, ...)
+- Quand on saisie un resultat il est tout de suite mis dans le tableau (contrairement à avant ou il fallait appuyer sur Tournoi OK)
+- Le bouton OK sert maintenant à recharger le fichier json: comme les applis poules et tableau peuvent fonctionner ensemble, il se peut que toutes les poules ne soient pas encore toutes saisies. Il fallait donc relance l'appli Tableau quand une nouvelle poule etait entrée 
+
 Le 24/01/2025
 Ajout General-V1.3 avec resultats-poules-V2.6, Tournoi-V1.4 et config.ini
 ainsi que les modules SaisieMatch, json_access, utils, config, logic
