@@ -55,14 +55,19 @@ def charger_config_categorie(config_file, categorie):
     return nbTopsDefaut
     
 def lire_prg_config(config_file):
-    
+    import configparser
     config = configparser.ConfigParser()
     config.read(config_file)
-    
-    poules_prg = config.get("Versions", "PoulesPy", fallback=".")
-    tableau_py = config.get("Versions", "TableauPy", fallback=".")
-    
-    return poules_prg,tableau_py
+
+    # Supposons que vous avez une section [PROGRAMMES] et une section [PATHS]
+    try:
+        PoulesPrg = config.get("Versions", "PoulesPy")
+        TableauPrg = config.get("Versions", "TableauPy")
+        JsonDir = config.get("Paths", "directoryJson")  # <-- Ajout pour récupérer le chemin des JSON
+    except KeyError as e:
+        raise Exception(f"Clé manquante dans le fichier de configuration : {e}")
+
+    return PoulesPrg, TableauPrg, JsonDir
 
 def construire_bracket(n, start=1):
     def fusion_bracket(top, bottom):
