@@ -4,7 +4,7 @@ import os
 from tkinter import ttk, messagebox
 from utils import *
 
-def load_tableau(json_file, all = False):
+def load_all_tableau(json_file, all = False):
     directory = charger_config_json("config.ini")
     json_file = os.path.join(directory, json_file)
     try:
@@ -13,7 +13,7 @@ def load_tableau(json_file, all = False):
             data = json.load(f)
     except FileNotFoundError:
         #messagebox.showerror("Erreur", f"Fichier {json_file} non trouvé")
-        print(f"fichier {json_file} non trouvé")
+        print(f"fichier {json_file} non trouvé dans load_all_tableau")
         return {},{}
             
     if (all):

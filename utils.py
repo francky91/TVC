@@ -55,7 +55,6 @@ def charger_config_categorie(config_file, categorie):
     return nbTopsDefaut
     
 def lire_prg_config(config_file):
-    import configparser
     config = configparser.ConfigParser()
     config.read(config_file)
 
@@ -68,6 +67,26 @@ def lire_prg_config(config_file):
         raise Exception(f"Clé manquante dans le fichier de configuration : {e}")
 
     return PoulesPrg, TableauPrg, JsonDir
+
+def lire_status_debug(config_file):
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    
+    try:
+        debugStatus = config.get("Debug", "Status")
+    except KeyError as e:
+        raise Exception(f"Clé manquante dans le fichier de configuration : {e}")
+    return debugStatus
+
+def lire_pdf_directory(config_file="config.ini"):
+    """
+    Récupère le répertoire de sauvegarde des fichiers PDF depuis le fichier de configuration.
+    """
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    
+    directoryForPdf = config.get("Paths", "directoryPdf", fallback=".")
+    return directoryForPdf
 
 def construire_bracket(n, start=1):
     def fusion_bracket(top, bottom):
