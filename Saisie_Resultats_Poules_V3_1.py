@@ -148,9 +148,6 @@ class ResultEntryApp:
                 poule_data["type"] = "Classique"
                 for player in poule_data.get("joueurs", []):
                     self.nb_joueurs_poules += 1
-                #l = len(poule_data)
-                #print(f"---len poule : {l}")
-                #self.nb_joueurs_poules += l
 
         self.joueurs_info = {}
         for poule_name, poule_data in self.match_data.items():
@@ -260,7 +257,7 @@ class ResultEntryApp:
         #poule_data = self.match_data.get("poules", {}).get(poule_name, {})
         poule_data = self.match_data.get(poule_name, {})
         joueurs = poule_data.get("joueurs", [])
-        
+        print("Joueurs: ", joueurs)
         if joueurs:
             self.create_result_inputs(joueurs)
         else:
@@ -302,6 +299,7 @@ class ResultEntryApp:
                 (0, 1)
             ]
         else:
+            print ("Erreur: Nombre de joueurs invalide pour la poule, num_players: ", num_players)
             messagebox.showerror("Erreur", "Nombre de joueurs invalide pour la poule.")
             return
 
@@ -779,6 +777,8 @@ class ResultEntryApp:
                     
                     self.interTops[index_table]["joueur1"] = player 
                     self.interTops[index_table]["dossard_joueur1"] = doss
+                    
+                    print("---Intertops:", self.interTops)
         else:
             wait_for_last_idx=False
             for idx, player in enumerate(final_ranking):
@@ -840,7 +840,7 @@ class ResultEntryApp:
                     
         print(f"****TABLEAU KO: {self.tableauKo}****")                        
         '''
-        for idx in self.tableauOk:
+        for idx in self.tableauKo:
             for key, value in idx.items():
                 if (key > nb_joueurs_max):
                     idx[key] = "---"
