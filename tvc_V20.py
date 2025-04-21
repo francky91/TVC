@@ -332,6 +332,7 @@ def construire_tops(joueurs, nb_poules_top):
     autres_joueurs = joueurs.iloc[nb_poules_top * 4:].reset_index(drop=True)
     top_poules = [[] for _ in range(nb_poules_top)]
     
+    print(f"joueurs_top: {joueurs_top}")
     if (nb_poules_top == 2):
         poule_top1, poule_top2 = construire_tops_2_poules(joueurs_top)
         top_poules[0] = poule_top1
@@ -382,10 +383,17 @@ def echanger_joueur(poule_surplus, poule_autre, club):
             j2 = poule_autre[k]
             if j2['club'] == club:
                 continue  # on veut échanger contre un joueur d'un club différent
-                        
-            # TENTATIVE d'échange
-            poule_surplus[i], poule_autre[k] = j2, j1  # swap
-
+            
+            # calculer la représentation du club j dans les 2 poules
+            club_j2 = j2['club']
+            count_j2_in_pouleA = sum(1 for j in poule_surplus if j['club'] == club_j2) + 1
+            count_j2_in_pouleB = sum(1 for j in poule_autre if j['club'] == club_j2) - 1
+            
+            if abs(count_j2_in_pouleA - count_j2_in_pouleB) <= 1:
+                # TENTATIVE d'échange
+                print(f"on échange {j1} avec {j2}")
+                poule_surplus[i], poule_autre[k] = j2, j1  # swap
+                return True
             # Vérifier si ça a amélioré la situation ou si ça ne crée pas 
             # un nouveau déséquilibre sur un autre club 
             # => On peut recalculer le difference sur ce "club" tout de suite.
@@ -395,7 +403,7 @@ def echanger_joueur(poule_surplus, poule_autre, club):
 
             # On peut s'arrêter ici et laisser la boucle while 
             # de reequilibrer_2_poules re-tester pour d'autres clubs potentiels
-            return True
+            #return True
 
     # Si on n'a pas trouvé d'échange possible
     return False
@@ -434,6 +442,11 @@ def reequilibrer_2_poules(pouleA, pouleB):
     while True:
         # 1) On construit un dict des effectifs pour chaque club
         club_counts = construire_club_counts(pouleA, pouleB)
+        print("club_counts: ", club_counts)
+        for idx in pouleA:
+            print(f"pouleA, club: {idx['club']}, dossard: {idx['dossard']}")
+        for idx in pouleB:
+            print(f"pouleB, club: {idx['club']}, dossard: {idx['dossard']}")
         
         # 2) On cherche s'il existe un club dont l'écart de counts > 1
         club_trouve = None
@@ -447,7 +460,9 @@ def reequilibrer_2_poules(pouleA, pouleB):
             break
         
         # 3) On essaie de faire un échange pour ce club
+        print(f"club {club_trouve} : surplus dans pouleA ? {club_counts[club_trouve][0]} > {club_counts[club_trouve][1]}")
         reussi = essayer_echange(pouleA, pouleB, club_trouve)
+        print(f"club {club_trouve} : échange réussi ? {reussi}")
         if not reussi:
             # Aucun échange n'est possible, on arrête
             break
@@ -466,28 +481,22 @@ def construire_tops_2_poules(joueurs_top):
 
     poule_top1 = df_poule_top1.to_dict('records')
     poule_top2 = df_poule_top2.to_dict('records')
+    print("poule_top1: ", poule_top1)
+    print("poule_top2: ", poule_top2)
 
     # rééquilibrage
     poule_top1, poule_top2 = reequilibrer_2_poules(poule_top1, poule_top2)
+    print("poule_top1 après rééquilibrage: ", poule_top1)
+    print("poule_top2 après rééquilibrage: ", poule_top2)
 
     return poule_top1, poule_top2
 
-
-'''def reequilibrer_apres_echec_echange(poules, club_limits):
+def reequilibrer_apres_echec_echange(poules, club_limits, club_min):
     """
-    Après reequilibrer_poules_par_echange, certaines poules X peuvent encore
-    dépasser la limite pour un club C. Alors on applique cette logique :
-      - Parcourt les poules (X) où un club C dépasse encore sa limite,
-      - Dans poule X, part du 'bas' (fin) vers le haut, pour trouver
-        un joueur du club C (en trop),
-      - Parcourt toutes les autres poules Y où le club C est en-dessous de sa limite,
-        en partant du 'bas' vers le haut pour trouver un joueur qu'on peut échanger.
-      - Vérifie si l'échange respecte la limite pour le club C dans Y
-        et pour le club D (joueur trouvé dans Y) dans X.
-      - Effectue l'échange si possible, puis on arrête (on reteste la poule X).
-      - Si on ne trouve aucun échange, on passe au suivant, etc.
+    Rééquilibre les poules après un échec d'échange en respectant les contraintes :
+    - Chaque club doit respecter son minimum (`club_min`) et son maximum (`club_limits`) dans chaque poule.
+    - Le nombre de poules reste constant.
     """
-
     nb_poules = len(poules)
 
     def count_in_poule(poule, club):
@@ -499,119 +508,14 @@ def construire_tops_2_poules(joueurs_top):
 
         # Parcourir toutes les poules
         for idx_x, pouleX in enumerate(poules):
-            # On repère les clubs qui dépassent leur limite
-            from collections import Counter
-            counts = Counter(j["club"] for j in pouleX)
-            surplus_clubs = [(clubC, countC) for (clubC, countC) in counts.items() 
-                             if countC > club_limits.get(clubC, 3)]
-
-            if not surplus_clubs:
-                continue  # pas de surplus dans cette poule
-
-            # Pour chaque club en surplus dans pouleX
-            for (clubC, countC) in surplus_clubs:
-                maxC = club_limits.get(clubC, 3)
-                # On va chercher "du bas vers le haut" un joueur du clubC
-                # autrement dit, on part de l'indice len(pouleX)-1, len(pouleX)-2, ...
-                found_exchange = False
-
-                for posC in range(len(pouleX)-1, -1, -1):
-                    if pouleX[posC]["club"] == clubC:
-                        # On tente de l'échanger
-                        joueurC = pouleX[posC]
-                        
-                        # On parcourt toutes les poules Y != X
-                        # et on ne prend que celles où la limite de clubC n'est pas atteinte
-                        # i.e. count_in_poule(Y, clubC) < maxC
-                        for idx_y, pouleY in enumerate(poules):
-                            if idx_y == idx_x:
-                                continue
-                            countC_in_y = count_in_poule(pouleY, clubC)
-                            if countC_in_y >= maxC:
-                                continue  # On n'a pas de place pour clubC dans pouleY
-
-                            # On part "du bas vers le haut" dans pouleY
-                            for posD in range(len(pouleY)-1, -1, -1):
-                                joueurD = pouleY[posD]
-                                clubD = joueurD["club"]
-                                maxD = club_limits.get(clubD, 3)
-
-                                # Vérif si on déplace joueurC => pouleY,
-                                # on n'excède pas la limite pour clubC.
-                                # => On a countC_in_y, on va +1 si clubC != clubD
-                                nouveau_countC_in_y = countC_in_y
-                                if clubC != clubD:
-                                    nouveau_countC_in_y += 1
-                                if nouveau_countC_in_y > maxC:
-                                    continue
-
-                                # Vérif si on déplace joueurD => pouleX,
-                                # on n'excède pas la limite pour clubD.
-                                countD_in_x = count_in_poule(pouleX, clubD)
-                                nouveau_countD_in_x = countD_in_x
-                                if clubD != clubC:
-                                    nouveau_countD_in_x += 1
-                                if nouveau_countD_in_x > maxD:
-                                    continue
-
-                                # => Echange possible
-                                pouleX[posC], pouleY[posD] = joueurD, joueurC
-                                print(f"Échange: {joueurC} <-> {joueurD} entre poule {idx_x} et poule {idx_y}")
-                                changed = True
-                                found_exchange = True
-                                break  # on arrête posD, on repasse pour voir si surplus ok
-                            
-                            if found_exchange:
-                                # On sort de la boucle pouleY
-                                break
-
-                        if found_exchange:
-                            # On a fait un échange => on arrête la recherche
-                            # du joueur de clubC dans pouleX.
-                            break
-
-                # après avoir cherché un joueur pour échanger
-                # on n'a pas forcément tout résolu, mais on a fait un "pas".
-                # on laisse "while changed" relancer un tour
-
-    # fin while changed
-    return poules
-'''
-
-def reequilibrer_apres_echec_echange(poules, club_limits):
-    """
-    Après reequilibrer_poules_par_echange, certaines poules X peuvent encore
-    dépasser la limite pour un club C. Alors on applique la logique :
-      - Parcourt les poules X où un club C dépasse encore sa limite,
-      - dans poule X, on part du 'bas' (fin) vers le haut, pour trouver
-        un joueur de clubC en trop,
-      - on parcourt toutes les autres poules Y, là où le clubC
-        n'a pas atteint la limite,
-      - on part aussi du 'bas' vers le haut pour trouver un joueur (clubD),
-        vérifiant qu'on peut échanger sans dépasser la limite
-        (clubC dans Y, clubD dans X).
-      - On ajoute des print pour tracer l'échange (poules, positions).
-    """
-
-    nb_poules = len(poules)
-
-    def count_in_poule(poule, club):
-        return sum(1 for j in poule if j["club"] == club)
-
-    changed = True
-    while changed:
-        changed = False
-
-        # Parcourir toutes les poules
-        for idx_x, pouleX in enumerate(poules):
-            # On repère s'il y a un surplus pour un club C
+            # On repère s'il y a un surplus ou un manque pour un club C
             from collections import Counter
             counts = Counter(j["club"] for j in pouleX)
             surplus_clubs = [(c, n) for (c, n) in counts.items() if n > club_limits.get(c, 3)]
+            missing_clubs = [(c, n) for c, n in club_min.items() if counts.get(c, 0) < n]
 
-            if not surplus_clubs:
-                continue  # pas de surplus dans cette poule
-
+            #print(f"POULE {idx_x} : surplus_clubs: {surplus_clubs}, missing_clubs: {missing_clubs}")
+            # Traiter les clubs en surplus
             for (clubC, countC) in surplus_clubs:
                 maxC = club_limits.get(clubC, 3)
 
@@ -634,6 +538,7 @@ def reequilibrer_apres_echec_echange(poules, club_limits):
                                 joueurD = pouleY[posD]
                                 clubD = joueurD["club"]
                                 maxD = club_limits.get(clubD, 3)
+                                minD = club_min.get(clubD, 0)
 
                                 # Vérif qu'en envoyant joueurC => pouleY,
                                 # on ne dépasse pas la limite pour clubC dans Y
@@ -652,6 +557,10 @@ def reequilibrer_apres_echec_echange(poules, club_limits):
                                 if nouveau_countD_in_x > maxD:
                                     continue
 
+                                # Vérif qu'on respecte les minimums pour clubC et clubD
+                                if countC - 1 < club_min.get(clubC, 0) or countD_in_x + 1 < minD:
+                                    continue
+
                                 # Échange possible
                                 pouleX[posC], pouleY[posD] = joueurD, joueurC
                                 print(f"[reequilibrer_apres_echec_echange] ÉCHANGE :"
@@ -667,9 +576,64 @@ def reequilibrer_apres_echec_echange(poules, club_limits):
                                 break  # on arrête la boucle pouleY
                         if found_exchange:
                             break  # on arrête la boucle posC
+
+            # Traiter les clubs en manque
+            for (clubC, minC) in missing_clubs:
+                countC = counts.get(clubC, 0)
+
+                # Chercher une poule Y où count_in_poule(Y, clubC) > minC
+                for idx_y, pouleY in enumerate(poules):
+                    print (f"idx_y: {idx_y}")
+                    if idx_y == idx_x:
+                        continue
+                    countC_in_y = count_in_poule(pouleY, clubC)
+                    if countC_in_y <= minC:
+                        continue  # pas assez de joueurs pour clubC ici
+  
+                    # On parcourt pouleY du bas vers le haut
+                    for posD in range(len(pouleY)-1, -1, -1):
+                        joueurD = pouleY[posD]
+                        clubD = joueurD["club"]
+                        maxD = club_limits.get(clubD, 3)
+                        minD = club_min.get(clubD, 0)
+                        if (posD+1 > len(pouleX)):
+                            posC = len(pouleX) - 1
+                        else:
+                            posC = posD
+                        joueurC = pouleX[posC]
+                        clubCurC = joueurC["club"]
+
+                        # Vérif qu'en envoyant joueurD => pouleX,
+                        # on respecte le minimum pour clubC dans X
+                        if countC + 1 < minC:
+                            continue
+
+                        # Vérif qu'en envoyant joueurD => pouleX,
+                        # on ne dépasse pas la limite pour clubD dans X
+                        countD_in_x = count_in_poule(pouleX, clubD)
+                        if countD_in_x + 1 > maxD:
+                            continue
+                        
+                        print(f"clubC: {clubC}, clubD: {clubD}")
+                        
+                        # Échange possible
+                        #pouleX.append(joueurD)
+                        #pouleY.pop(posD)
+                        
+                        if (clubC != clubD):
+                            continue
+                        
+                        pouleX[posC], pouleY[posD] = joueurD, joueurC
+                        print(f"[reequilibrer_apres_echec_echange] ECHANGE :"
+                              f" Poule {idx_x} reçoit {joueurD['nom']} {joueurD['prenom']} (club {clubD})")
+
+                        changed = True
+                        break  # on arrête la boucle pouleY[posD]
+                    if changed:
+                        break  # on arrête la boucle pouleY
     return poules
 
-def verifier_repartition_clubs(poules, club_limits):
+def verifier_repartition_clubs(poules, club_limits, club_min):
     """
     Vérifie si, dans chaque poule, aucun club ne dépasse sa limite 'club_limits[club]'.
     Retourne True s'il reste un problème (un surplus), False si tout est correct.
@@ -677,6 +641,12 @@ def verifier_repartition_clubs(poules, club_limits):
     """
 
     from collections import Counter
+    liste_clubs = []
+    for idx_poule, poule in enumerate(poules):
+        for joueur in poule:
+            if joueur["club"] not in liste_clubs:
+                liste_clubs.append(joueur["club"])
+    
     probleme = False
 
     for idx_poule, poule in enumerate(poules):
@@ -686,165 +656,24 @@ def verifier_repartition_clubs(poules, club_limits):
         # Vérifier chaque club
         for club, nb_joueurs in counts.items():
             limite = club_limits.get(club, 3)  # par défaut 3
+            min = club_min.get(club, 3)
             if nb_joueurs > limite:
                 print(f"[verifier_repartition_clubs] Surplus dans poule {idx_poule}: "
                       f"Club {club} a {nb_joueurs} joueurs (limite = {limite}).")
                 probleme = True
-
+            if nb_joueurs < min:
+                print(f"[verifier_repartition_clubs] Manque dans poule {idx_poule}: "
+                      f"Club {club} a {nb_joueurs} joueurs (min = {min}).")
+                probleme = True
+                
+        for club,min in club_min.items():
+            if min>0 and club not in counts:
+                print(f"[verifier_repartition_clubs] Manque dans poule {idx_poule}: "
+                      f"Club {club} a 0 joueurs (min = {min}).")
+                probleme = True
     return probleme
 
-
-'''def reequilibrer_poules_par_echange(poules, club_limits, start_index=1):
-    """
-    Parcourt chaque poule X. Pour chaque club C qui dépasse sa limite,
-    on parcourt la poule X en cherchant un joueur de club C (à partir de la position start_index).
-    Puis on tente un échange avec la poule Y, à la même position (P).
-    On vérifie que déplacer le joueur de club C vers Y ne dépasse pas la limite de C dans Y,
-    et que déplacer le joueur de Y (club D) vers X ne dépasse pas la limite de D dans X.
-    Si ça résout le surplus, on arrête pour ce club. Sinon, on continue à chercher un autre joueur C.
-    """
-
-    nb_poules = len(poules)
-
-    # Petite fonction utilitaire
-    def count_in_poule(poule, club):
-        return sum(1 for j in poule if j["club"] == club)
-
-    changed = True
-    while changed:
-        changed = False
-
-        # Parcourir chaque poule X
-        for x in range(nb_poules):
-            pouleX = poules[x]
-            position_in_poule = start_index
-            # Construire un "dictionnaire" club->count pour la poule X
-            from collections import Counter
-            club_counts = Counter(j["club"] for j in pouleX)
-            print(f"club_counts: {club_counts}, poule {x}")
-
-            # Pour chaque club C présent dans la poule
-            for clubC, countC in club_counts.items():
-                
-                maxC = club_limits.get(clubC, 3)  # par défaut 3 si non défini
-                print(f"---clubC: {clubC}, countC: {countC}, maxC: {maxC}, position_in_poule: {position_in_poule}---")
-                # Si on est au-dessus de la limite
-                while countC > maxC:
-                    # On parcourt pouleX pour trouver un joueur de clubC
-                    # à partir de la position start_index
-                    print("countC > maxC")
-                    posC = -1
-                    for idxC in range(0, len(pouleX)):
-                        print(f"idxC: {idxC} - club: {pouleX[idxC]["club"]}")
-                    for idxC in range(position_in_poule, len(pouleX)):
-                        print(f"---{pouleX[idxC]["club"]} {clubC}, idxC: {idxC}---")
-                        if pouleX[idxC]["club"] == clubC:
-                            print(f"In If")
-                            posC = idxC
-                            print(f"posC: {posC}")
-                            break
-                    
-                    if posC == -1:
-                        # On n'a pas trouvé d'autre joueur "déplaçable" pour ce club
-                        break  # on passe au club suivant
-
-                    joueurC = pouleX[posC]
-                    print(f"joueurC: {joueurC}")
-
-                    # Tenter un échange avec une poule Y
-                    echange_trouve = False
-                    for y in range(nb_poules):
-                        if y == x:
-                            continue  # pas d'échange dans la même poule
-                        pouleY = poules[y]
-
-                        # Vérifier qu'il existe bien la même position posC dans pouleY
-                        if len(pouleY) <= posC:
-                            continue  # pas de joueur à cet index dans pouleY
-
-                        joueurD = pouleY[posC]
-                        clubD = joueurD["club"]
-                        maxD = club_limits.get(clubD, 3)
-                        #print(f"compare to {joueurD} in poule {y}")
-
-                        # Vérif 1 : si on envoie joueurC (clubC) vers la pouleY
-                        # Est-ce que la pouleY dépasse la limite de clubC ?
-                        countC_in_y = count_in_poule(pouleY, clubC)
-                        # Si clubC != clubD, on retirera 1 occurrence de clubD
-                        # et on ajoutera 1 occurrence de clubC. Mais le plus important :
-                        # on n'ajoute PAS joueurC avant d'enlever joueurD,
-                        # car c'est un échange direct. Au final, net +1 clubC, net -1 clubD.
-
-                        # Donc on fait un "what if" : nouveau_countC_in_y = countC_in_y + 1 (car on ajoute joueurC)
-                        # Mais si joueurD est aussi du clubC, ça change rien sur la pouleY ? 
-                        # => dans ce cas, countC_in_y ne change pas. Pour être simple, gérons le cas "clubC != clubD".
-                        if clubC != clubD:
-                            nouveau_countC_in_y = countC_in_y + 1
-                        else:
-                            #nouveau_countC_in_y = countC_in_y
-                            if (y == nb_poules-1):
-                                position_in_poule += 1
-                            continue
-
-                        if nouveau_countC_in_y > maxC:
-                            # Ça dépasserait la limite => pas possible
-                            #print("on depasse la limite nouveau_countC_in_y > maxC")
-                            if (y == nb_poules-1):
-                                position_in_poule += 1
-                            continue
-
-                        # Vérif 2 : si on envoie joueurD (clubD) vers la pouleX
-                        # PouleX perdra 1 joueurC et gagnera 1 joueurD
-                        # => on fait un "what if" pour le nombre de clubD dans pouleX
-                        countD_in_x = count_in_poule(pouleX, clubD)
-                        if clubD != clubC:
-                            nouveau_countD_in_x = countD_in_x + 1
-                        else:
-                            # si c'est le même club, alors on enlève un "clubC" et on ajoute un "clubC" => ça ne change rien
-                            # => no effect sur le count de ce club, mais on est déjà en surplus pour C, ça ne résout rien
-                            # On peut ignorer ce cas ou continuer, selon vos règles
-                            if (y == nb_poules-1):
-                                position_in_poule += 1
-                            continue
-
-                        if nouveau_countD_in_x > maxD:
-                            # on dépasserait la limite pour clubD => pas possible
-                            #print("on depasse la limite nouveau_countD_in_x > maxD")
-                            if (y == nb_poules-1):
-                                position_in_poule += 1
-                            continue
-
-                        # Si on arrive ici, l'échange est possible
-                        # => on l'effectue
-                        pouleX[posC], pouleY[posC] = joueurD, joueurC
-                        changed = True
-                        echange_trouve = True
-                        print(f"echange : {joueurD} vers poule{x}, {joueurC} vers poule{y}")
-                        # recalculer le count du clubC dans pouleX
-                        countC = count_in_poule(pouleX, clubC)
-                        #print(f"new countC: {countC}")
-                        
-                        if echange_trouve:
-                            break
-                        else:
-                            position_in_poule += 1
-                        # si ce n'est plus en surplus, on peut arrêter
-                        #if countC <= maxC:
-                        #    break  # on arrête de boucler sur y
-
-                        #if not echange_trouve:
-                            # on n'a pas trouvé de poule Y pour échanger => on arrête la boucle while
-                        #   break
-                        #else:
-                            # on a fait un échange => on reteste la condition while countC > maxC
-                            # en recaculant countC
-                            #club_counts = Counter(j["club"] for j in pouleX)
-                    
-
-    # fin while changed
-    return poules
 '''
-
 def reequilibrer_poules_par_echange(poules, club_limits, start_index=1):
     """
     Parcourt chaque poule X. Pour chaque club C qui dépasse sa limite,
@@ -959,6 +788,126 @@ def reequilibrer_poules_par_echange(poules, club_limits, start_index=1):
                         break
     return poules
 
+'''
+def reequilibrer_poules_par_echange(poules, club_limits, club_min, start_index=1):
+    """
+    Parcourt chaque poule X. Pour chaque club C qui dépasse sa limite ou ne respecte pas son minimum,
+    on parcourt la poule X en cherchant un joueur de club C (à partir de la position start_index).
+    Puis on tente un échange avec la poule Y, à la même position (posC).
+    On vérifie que déplacer le joueur de club C vers Y ne dépasse pas la limite de C dans Y,
+    et que déplacer le joueur de Y (club D) vers X ne dépasse pas la limite de D dans X,
+    tout en respectant les minimums définis par club_min.
+
+    Les prints donnent des informations sur les échanges effectués (joueurs, poules, positions).
+    """
+
+    nb_poules = len(poules)
+
+    def count_in_poule(poule, club):
+        return sum(1 for j in poule if j["club"] == club)
+
+    changed = True
+    while changed:
+        changed = False
+
+        # Parcourir chaque poule X
+        for x in range(nb_poules):
+            pouleX = poules[x]
+
+            # Construire un "dictionnaire" club->count pour la poule X
+            from collections import Counter
+            club_counts = Counter(j["club"] for j in pouleX)
+
+            # Pour chaque club C présent dans la poule
+            for clubC, countC in club_counts.items():
+                maxC = club_limits.get(clubC, 3)  # par défaut 3 si non défini
+                minC = club_min.get(clubC, 0)  # par défaut 0 si non défini
+
+                # Tant que ce club dépasse la limite ou ne respecte pas le minimum
+                while countC > maxC or countC < minC:
+                    # On parcourt la poule X pour trouver un joueur de clubC
+                    # à partir de la position start_index
+                    posC = -1
+                    for idxC in range(start_index, len(pouleX)):
+                        if pouleX[idxC]["club"] == clubC:
+                            posC = idxC
+                            break
+
+                    if posC == -1:
+                        # On n'a pas trouvé d'autre joueur "déplaçable" pour ce club
+                        break  # on passe au club suivant
+
+                    joueurC = pouleX[posC]
+                    clubC = joueurC["club"]
+
+                    # Tenter un échange avec une poule Y
+                    echange_trouve = False
+                    for y in range(nb_poules):
+                        if y == x:
+                            continue  # pas d'échange dans la même poule
+                        pouleY = poules[y]
+
+                        # Vérifier qu'il existe bien la même position posC dans pouleY
+                        if len(pouleY) <= posC:
+                            continue  # pas de joueur à cet index dans pouleY
+
+                        joueurD = pouleY[posC]
+                        clubD = joueurD["club"]
+                        maxD = club_limits.get(clubD, 3)
+                        minD = club_min.get(clubD, 0)
+
+                        # Vérif 1 : pouleY ne dépasse pas la limite pour clubC
+                        countC_in_y = count_in_poule(pouleY, clubC)
+
+                        # Cas clubC != clubD => on ferait +1 au clubC
+                        if clubC != clubD:
+                            nouveau_countC_in_y = countC_in_y + 1
+                        else:
+                            # Même club => échanger un joueurC contre un joueurD du même club
+                            # ne change pas la quantité de ce club dans Y
+                            nouveau_countC_in_y = countC_in_y
+
+                        if nouveau_countC_in_y > maxC:
+                            # Dépasse la limite => pas possible
+                            continue
+
+                        # Vérif 2 : pouleX ne dépasse pas la limite pour clubD
+                        countD_in_x = count_in_poule(pouleX, clubD)
+                        if clubD != clubC:
+                            nouveau_countD_in_x = countD_in_x + 1
+                        else:
+                            # Même club => l'échange ne modifie pas la distribution de ce club
+                            # dans X, on demeure en surplus pour clubC ? Selon votre logique, on skip.
+                            continue
+
+                        if nouveau_countD_in_x > maxD:
+                            # On dépasserait la limite pour clubD => pas possible
+                            continue
+
+                        # Vérif 3 : Respect des minimums pour clubC et clubD
+                        if countC - 1 < minC or countD_in_x + 1 < minD:
+                            # L'échange créerait un manque pour l'un des clubs => pas possible
+                            continue
+
+                        # Si on arrive ici, l'échange est possible
+                        pouleX[posC], pouleY[posC] = joueurD, joueurC
+                        print(f"[reequilibrer_poules_par_echange] ÉCHANGE :"
+                              f" Poule {x} pos {posC} (club {clubC}) <-->"
+                              f" Poule {y} pos {posC} (club {clubD})")
+                        print(f"    JoueurC : {joueurC['nom']} {joueurC['prenom']} (club {clubC})")
+                        print(f"    JoueurD : {joueurD['nom']} {joueurD['prenom']} (club {clubD})")
+
+                        changed = True
+                        echange_trouve = True
+
+                        # recalculer le count du clubC dans pouleX
+                        countC = count_in_poule(pouleX, clubC)
+                        break  # on arrête la boucle sur pouleY
+
+                    if not echange_trouve:
+                        # On n'a pas trouvé de poule Y pour échanger
+                        break
+    return poules
 
 def placer_joueurs(autres_joueurs, nb_poules_3, nb_poules_4, nb_poules_5):
     """
@@ -1001,18 +950,22 @@ def placer_joueurs(autres_joueurs, nb_poules_3, nb_poules_4, nb_poules_5):
         club_counts[c] = club_counts.get(c, 0) + 1
 
     club_limits = {}
+    club_min = {}
     for (club, y) in club_counts.items():
         if y <= nb_poules:
             club_limits[club] = 1
+            club_min[club] = 0
         elif y <= 2*nb_poules:
             club_limits[club] = 2
+            club_min[club] = 1
         else:
             # Par défaut 3, voire plus si vous voulez
             club_limits[club] = 3
+            club_min[club] = 2
 
     # 2) Construire l'ordre serpent
     serpent_order = construire_serpent_order(nb_poules, nb_joueurs)
-
+    
     # 3) Parcourir chaque joueur
     for i, joueur in enumerate(listed_joueurs):
         p = serpent_order[i]  # poule "préférée" par l'ordre serpent
@@ -1039,13 +992,14 @@ def placer_joueurs(autres_joueurs, nb_poules_3, nb_poules_4, nb_poules_5):
             # On pourrait lever une Exception ou faire un break, 
             # selon vos besoins
             # raise ValueError("Impossible de placer tous les joueurs - pas assez de place.")
-    reequilibrer_poules_par_echange(poules, club_limits, start_index=1)
-    reequilibrer_apres_echec_echange(poules, club_limits)
-    surplus = verifier_repartition_clubs(poules, club_limits)
+    reequilibrer_poules_par_echange(poules, club_limits, club_min, start_index=1)
+    reequilibrer_apres_echec_echange(poules, club_limits, club_min)
+    surplus = verifier_repartition_clubs(poules, club_limits, club_min)
     if surplus:
         print("==> Il reste un surplus après tentatives d'échanges.")
     else:
         print("==> Tout est OK côté répartition de clubs.")
+
     return poules
 
 
@@ -1280,11 +1234,7 @@ def repartir_poules_sans_conflit(fichier_entree, feuille_source_resultat, nb_pou
     joueurs, tourActif, nbJoueurs = filtrer_et_trier_joueurs(joueurs, nb_poules_top)
 
     print("tourActif:", tourActif, ", nbJoueurs:", nbJoueurs)
-    '''if has_top and nb_poules_top is None:
-        nb_poules_top = 2
-    elif (nb_poules_top is None):
-        nb_poules_top = 0
-    '''
+
     if (nb_poules_3 != None and nb_poules_4 != None):
         nbTotal = nb_poules_top*4 + nb_poules_3*3 + nb_poules_4*4
         if (nb_poules_5 != None):
@@ -1294,6 +1244,7 @@ def repartir_poules_sans_conflit(fichier_entree, feuille_source_resultat, nb_pou
             exit()
     if nb_poules_top > 0:
         top_poules, autres_joueurs = construire_tops(joueurs, nb_poules_top)
+        print("after")
     else:
         top_poules = {}
         autres_joueurs = joueurs
@@ -1318,12 +1269,13 @@ def repartir_poules_sans_conflit(fichier_entree, feuille_source_resultat, nb_pou
     return top_poules, poules, tourActif, nbJoueurs
 
 def update_word_and_json(categorie, tourActif, top_poules, poules):
-    print(f"Top-Poules1: {top_poules[0]}")
-    
+
     fichierWord=f'{categorie}_{tourActif}.docx'
     ecrire_document_word(fichierWord, categorie, top_poules, poules)
     # Générer le fichier JSON
     ecrire_fichier_json(categorie, tourActif, top_poules, poules)
+    
+    messagebox.showinfo("Information", "Le fichier Word et le fichier JSON ont été mis à jour avec succès.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Repartir les poules en fonction des joueurs et des options.")
