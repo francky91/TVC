@@ -86,12 +86,12 @@ class TVCApp:
     def on_lancer(self):
         """Quand on clique sur Lancer : on lance repartir_poules_sans_conflit, puis on affiche la fenetre de poules."""
         try:
-            nb_top = int(self.nb_poules_top_var.get())
+            self.nb_tops = int(self.nb_poules_top_var.get())
             nb_3   = int(self.nb_poules_3_var.get())
             nb_4   = int(self.nb_poules_4_var.get())
             nb_5   = int(self.nb_poules_5_var.get())
             
-            if (nb_top*4 + nb_3*3 + nb_4*4 + nb_5*5 != self.nbJoueurs):
+            if (self.nb_tops*4 + nb_3*3 + nb_4*4 + nb_5*5 != self.nbJoueurs):
                 messagebox.showerror("Erreur", "Erreur dans la définition du nombre de poules")
                 self.nb_poules_top_var.set(self.nb_tops_defaut)
                 self.nb_poules_3_var.set(self.nb_poules_3)
@@ -107,7 +107,7 @@ class TVCApp:
             self.top_poules, self.poules, tourActif, nbJoueurs = repartir_poules_sans_conflit(
                 lire_excel_name(),
                 self.categorie,
-                nb_poules_top=nb_top,
+                nb_poules_top=self.nb_tops,
                 nb_poules_3=nb_3,
                 nb_poules_4=nb_4,
                 nb_poules_5=nb_5
@@ -383,7 +383,7 @@ class TVCApp:
 
     def refresh_all_poules(self):
         """Rafraîchit l'affichage de toutes les poules."""
-        for i, poule in enumerate(self.top_poules.values()):
+        for i, poule in enumerate(self.top_poules):
             #self.refresh_treeview(self.treeviews[i], i, poule)
             self.refresh_treeview(self.treeviews[i], i, self.top_poules[i])
         for i, poule in enumerate(self.poules):
@@ -401,6 +401,19 @@ class TVCApp:
             messagebox.showerror("Erreur", "Pas assez de joueurs sélectionnés.")
             return
 
+        if (self.selected_poule1 < self.nb_tops or  self.selected_poule2 < self.nb_tops):
+            messagebox.showerror("Erreur", "Deplacement d'un joueur du top impossible")
+        
+            self.refresh_all_poules()
+            self.selected_item_1 = None
+            self.selected_item_2 = None
+            self.selected_poule1 = -1
+            self.selected_poule2 = -1
+        
+            self.btn_swap["state"] = "disabled"
+            self.btn_depl["state"] = "disabled"
+            return
+        
         # Récupérer les indices des poules et des positions
         pouleX = self.selected_poule1
         posP = self.item_to_poulepos2[self.selected_poule1, self.selected_item_1]
@@ -425,7 +438,7 @@ class TVCApp:
                 else:
                     pouleTmp+=1
             else:
-                if (pouleTmp == 0):
+                if (pouleTmp == self.nb_tops):
                     posP += 1
                     sens = -sens
                     if (posP >= len(self.poules[pouleTmp])):
@@ -445,6 +458,13 @@ class TVCApp:
                 
                 joueurTmp = contenu_poule
                 
+
+        self.btn_deselect["state"] = "disabled"
+        
+        self.item_to_poulepos2 = {}
+        
+        self.refresh_all_poules()
+        
         self.selected_item_1 = None
         self.selected_item_2 = None
         self.selected_poule1 = -1
@@ -452,11 +472,6 @@ class TVCApp:
         
         self.btn_swap["state"] = "disabled"
         self.btn_depl["state"] = "disabled"
-        self.btn_deselect["state"] = "disabled"
-        
-        self.item_to_poulepos2 = {}
-        
-        self.refresh_all_poules()
         
     def on_swap(self):
         """Callback bouton Échanger."""
