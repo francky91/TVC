@@ -1,0 +1,12 @@
+{
+    "KO": {
+        "base_points": 2,
+        "increment_per_round": 1,
+        "winner_bonus": 2
+    },
+    "OK": {
+        "relative_to_KO_winner": 0,
+        "increment_per_round": 1,
+        "winner_bonus": 2
+    }
+}
