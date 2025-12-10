@@ -19,12 +19,13 @@ class TVCApp:
 
         self.categorie = categorie
         self.selected_item_1 = None
-        self.selected_item_2 = None
+        self.selected_item_2 = None 
         self.selected_poule1 = -1
         self.selected_poule2 = -1
+        self.nb_tops = 0
 
         # item_to_poulepos : {iid : (poule_index, joueur_index)}
-        self.item_to_poulepos2 = {}
+        self.item_to_poulepos = {}
         self.treeviews = {}
         
         # Dans un usage plus sophistiqué, top_poules, poules, etc. seraient aussi des attributs.
@@ -138,7 +139,7 @@ class TVCApp:
             iid = tree.insert("", tk.END, values=(dossard, nom, prenom, club, classement, points))
             # On stocke dans item_to_poulepos
             
-            self.item_to_poulepos2[poule_index, iid] = (idx_j)
+            self.item_to_poulepos[poule_index, iid] = (idx_j)
          
     def generer_poules(self):
         from tvc_V20 import update_word_and_json
@@ -227,16 +228,7 @@ class TVCApp:
         fenetre.state("zoomed")
         
     def on_deselect(self):
-        '''    for tree in self.treeviews.values():
-            tree.selection_remove(tree.selection())
-            self.selected_item_1 = None
-            self.selected_item_2 = None
-            self.selected_poule1 = -1
-            self.selected_poule2 = -1
-            self.update_swap_button()
-            if hasattr(self, 'btn_swap'):
-                self.btn_swap.config(state="disabled")
-        '''
+
         for tree in self.treeviews.values():
             tree.selection_remove(tree.selection())
         self.selected_item_1 = None
@@ -285,7 +277,7 @@ class TVCApp:
 
             iid = tree.insert("", tk.END, values=(dossard, nom, prenom, club, classement, points))
             
-            self.item_to_poulepos2[poule_index, iid] = (idx_j)
+            self.item_to_poulepos[poule_index, iid] = (idx_j)
 
         self.treeviews[poule_index] = tree
         
@@ -410,23 +402,51 @@ class TVCApp:
             self.selected_poule1 = -1
             self.selected_poule2 = -1
         
-            self.btn_swap["state"] = "disabled"
-            self.btn_depl["state"] = "disabled"
+            if hasattr(self, 'btn_swap'):
+                self.btn_swap["state"] = "disabled"
+            if hasattr(self, 'btn_depl'):
+                self.btn_depl["state"] = "disabled"
             return
         
         # Récupérer les indices des poules et des positions
-        pouleX = self.selected_poule1
-        posP = self.item_to_poulepos2[self.selected_poule1, self.selected_item_1]
-        pouleY = self.selected_poule2
-        posQ = self.item_to_poulepos2[self.selected_poule2, self.selected_item_2]
+        pouleX = self.selected_poule1 - self.nb_tops
+        posP = self.item_to_poulepos[self.selected_poule1, self.selected_item_1]
+        pouleY = self.selected_poule2 - self.nb_tops
+        posQ = self.item_to_poulepos[self.selected_poule2, self.selected_item_2]
+        
+        if (pouleY < pouleX or ( pouleY == pouleX and posQ == posP)):
+            messagebox.showerror("Erreur", "Le joueur à déplacer doit être après la position cible.")
+            
+            self.refresh_all_poules()
+            self.selected_item_1 = None
+            self.selected_item_2 = None
+            self.selected_poule1 = -1
+            self.selected_poule2 = -1
+        
+            if hasattr(self, 'btn_swap'):
+                self.btn_swap["state"] = "disabled"
+            if hasattr(self, 'btn_depl'):
+                self.btn_depl["state"] = "disabled"
+            return
+            
         pouleTmp = pouleX
 
-        print(f"Déplacement : joueur de poule {pouleY}, position {posQ} vers poule {pouleX}, position {posP}") 
+        print(f"Déplacement : joueur de poule {pouleY}, position {posQ} vers poule {pouleX}, position {posP}: {self.poules[pouleY][posQ].get('nom','')} {self.poules[pouleY][posQ].get('prenom','')}") 
         ended = False
         sens = 1  # 1 pour avancer, -1 pour reculer
         
+        print(f"pouleX: {pouleX}, posP: {posP}, pouleY: {pouleY}, posQ: {posQ}")
         joueurTmp = self.poules[pouleX][posP]
+        
+        
+        #print(f"contenu poule X: {self.poules[pouleX]}")
+        #print(f"contenu poule Y: {self.poules[pouleY]}")
         self.poules[pouleX][posP] = self.poules[pouleY][posQ]
+        #self.poules[pouleY][posQ] = joueurTmp
+        #print(f"Déplacement : joueur de poule {pouleX}, position {posP} vers poule {pouleY}, position {posQ}: {joueurTmp.get('nom','')} {joueurTmp.get('prenom','')}") 
+        
+        #joueurTmp = self.poules[pouleX+1][posP]
+        print(f"Joueur temporaire : {joueurTmp.get('nom','')} {joueurTmp.get('prenom','')}")
         while not ended:
             do_nothing = False
             if (sens ==  1):
@@ -435,33 +455,42 @@ class TVCApp:
                     sens = -sens
                     if (posP >= len(self.poules[pouleTmp])):
                         do_nothing = True
+                        print(f"sens: {sens}, do_nothing: {do_nothing}")
                 else:
                     pouleTmp+=1
             else:
-                if (pouleTmp == self.nb_tops):
+                if (pouleTmp == 0):
                     posP += 1
                     sens = -sens
                     if (posP >= len(self.poules[pouleTmp])):
                         do_nothing = True
+                        print(f"sens: {sens}, do_nothing: {do_nothing}")
                 else:
                     pouleTmp-=1
             
+            print(f"pouleTmp: {pouleTmp}, posP: {posP}, pouleY: {pouleY}, posQ: {posQ}")
             if ( (pouleTmp == pouleY+1 and posP == posQ and sens==1) or
                  (pouleTmp == pouleY-1 and posP == posQ and sens==-1) ):
+                ended = True
+                break
+            elif (do_nothing and pouleTmp == pouleY and (
+                (posP == posQ + 1 and sens == -1) or
+                (posP == posQ - 1 and sens == 1)) ):
                 ended = True
                 break
             elif not do_nothing:
                 contenu_poule = self.poules[pouleTmp][posP]
                 self.poules[pouleTmp][posP] = joueurTmp
                 
-                print(f"Déplacement : joueur {joueurTmp} vers poule {pouleTmp}, position {posP}") 
+                print(f"Déplacement : joueur {joueurTmp.get('nom')} {joueurTmp.get('prenom')} vers poule {pouleTmp}, position {posP}") 
                 
                 joueurTmp = contenu_poule
                 
 
-        self.btn_deselect["state"] = "disabled"
+        if hasattr(self, 'btn_deselect'):
+            self.btn_deselect["state"] = "disabled"
         
-        self.item_to_poulepos2 = {}
+        self.item_to_poulepos = {}
         
         self.refresh_all_poules()
         
@@ -470,8 +499,10 @@ class TVCApp:
         self.selected_poule1 = -1
         self.selected_poule2 = -1
         
-        self.btn_swap["state"] = "disabled"
-        self.btn_depl["state"] = "disabled"
+        if hasattr(self, 'btn_swap'):
+            self.btn_swap["state"] = "disabled"
+        if hasattr(self, 'btn_depl'):
+            self.btn_depl["state"] = "disabled"
         
     def on_swap(self):
         """Callback bouton Échanger."""
@@ -480,9 +511,9 @@ class TVCApp:
             return
         
         pouleA = self.selected_poule1
-        indexA = self.item_to_poulepos2[self.selected_poule1, self.selected_item_1]
+        indexA = self.item_to_poulepos[self.selected_poule1, self.selected_item_1]
         pouleB = self.selected_poule2
-        indexB = self.item_to_poulepos2[self.selected_poule2, self.selected_item_2]
+        indexB = self.item_to_poulepos[self.selected_poule2, self.selected_item_2]
         #print(f"[on_swap] Échange entre pouleA={pouleA}:{indexA} et pouleB={pouleB}:{indexB}")
         print("Échange entre")
         print(f"selected_item_1: {self.selected_item_1}, selected_item_2: {self.selected_item_2}")
@@ -530,10 +561,13 @@ class TVCApp:
                 self.refresh_treeview(self.treeviews[pouleB], pouleB-l, self.poules[pouleB-l])
             else:
                 self.refresh_treeview(self.treeviews[pouleB], pouleB, self.top_poules[pouleB])
-                
-        self.btn_swap["state"] = "disabled"
-        self.btn_depl["state"] = "disabled"
-        self.btn_deselect["state"] = "disabled"
+        
+        if hasattr(self, 'btn_swap'):        
+            self.btn_swap["state"] = "disabled"
+        if hasattr(self, 'btn_depl'):
+            self.btn_depl["state"] = "disabled"
+        if hasattr(self, 'btn_deselect'):
+            self.btn_deselect["state"] = "disabled"
 
 def main(categorie):
     root = tk.Tk()
