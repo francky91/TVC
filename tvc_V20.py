@@ -69,6 +69,7 @@ def ecrire_fichier_json(feuille_source_resultat, tourActif, top_poules, poules, 
 
 def charger_joueurs(fichier_entree, feuille_source_resultat):
     # Lire le fichier Excel en spécifiant le nom de la feuille et en ignorant les premières lignes
+    print(f"fichier entrée:", fichier_entree)
     joueurs = pd.read_excel(fichier_entree, sheet_name=feuille_source_resultat, header=6)
 
     # Renommer les colonnes pour correspondre aux attentes du script
@@ -91,12 +92,14 @@ def charger_joueurs(fichier_entree, feuille_source_resultat):
         "TOTAL": "points"
     }
     joueurs.rename(columns=mapping_colonnes, inplace=True)
+    joueurs["classement"] = pd.to_numeric(joueurs["classement"], errors="coerce").fillna(0).astype(int)
 
     # Remplacer les colonnes manquantes par des colonnes vides si nécessaire
     for col in ["Tour1", "Tour2", "Tour3", "Tour4"]:
         if col not in joueurs.columns or joueurs[col].isnull().all():
             joueurs[col] = ""
 
+    print (f"joueurs", joueurs)
     return joueurs    
 
 '''def filtrer_et_trier_joueurs(joueurs, nb_poules_tops):
@@ -154,9 +157,11 @@ def filtrer_et_trier_joueurs(joueurs, nb_poules_tops):
         ("Tour1", "Nb Joueurs Inscrits Tour 1: ", "classement", [])
     ]
     
+    print("joueurs avant traitement:\n", joueurs["Tour1"])
     # 1) Remplacer les NaN par une chaîne vide
     for col in ["Tour1", "Tour2", "Tour3", "Tour4"]:
         joueurs[col] = joueurs[col].fillna("").astype(str)
+        print(f"Colonne {col} après fillna et astype str:\n", joueurs[col])
     
     # 2) Parcourir le mapping pour trouver le premier TourX où il y a un 'X'
     for col, msg, sort_col, liste_col_points in mapping:
@@ -164,6 +169,7 @@ def filtrer_et_trier_joueurs(joueurs, nb_poules_tops):
             # Garder uniquement les joueurs présents dans ce tour
             filtered = joueurs[joueurs[col].str.contains('X', case=False, na=False)].copy()
             nb_joueurs = len(filtered)
+            print("nb_joueurs:", nb_joueurs)
 
             # Définir le seuil : par exemple, pour 1 top, on garde les 4 premiers ; pour 2 tops, 8 premiers.
             threshold = nb_poules_tops * 4
@@ -172,6 +178,7 @@ def filtrer_et_trier_joueurs(joueurs, nb_poules_tops):
             if nb_poules_tops == 0:
                 sort_col = "classement"
 
+            print(f"Filtrage sur {col}, nb_joueurs={nb_joueurs}, tri par {sort_col}, seuil={threshold}")
             # --- CAS : tri par points (desc) ---
             if sort_col == "points" and len(liste_col_points) > 0:
                 # Calculer le score du tour précédent
@@ -186,6 +193,7 @@ def filtrer_et_trier_joueurs(joueurs, nb_poules_tops):
                 # Étape B: ajouter le critère du tour précédent
                 print ("In Step B")
                 stepB = filtered.sort_values(by=["points", "prev_tour"], ascending=[False, False])
+                # print("Step B:\n", stepB[["nom","prenom","points","prev_tour"]])
                 if len(stepB) >= threshold + 1:
                     # Si le joueur à la position seuil est clairement supérieur à celui qui suit
                     if (stepB.iloc[threshold - 1]["points"] > stepB.iloc[threshold]["points"]) or \
@@ -207,6 +215,8 @@ def filtrer_et_trier_joueurs(joueurs, nb_poules_tops):
                     return stepB, col.lower(), nb_joueurs
             else:
                 # Cas de Tour1 ou autre tri simple
+                print("sort_col: ", sort_col, ',filtered:\n', filtered)
+                
                 filtered_simple = filtered.sort_values(by=sort_col, ascending=False)
                 return filtered_simple, col.lower(), nb_joueurs
 
