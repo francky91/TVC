@@ -220,7 +220,7 @@ def show_points_window(app):
         fichier_entree = lire_excel_name()
         file_name = os.path.basename(fichier_entree)
 
-        url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/contents/{file_name}"
+        url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/contents/TVC2026/Excel/{file_name}"
 
         # 🔐 demander token
         token = simpledialog.askstring(
@@ -519,3 +519,4 @@ def gen_tableaux_croises(app):
 def load_points_config(app):
     """Wrapper that returns the points configuration for the given app."""
     return load_points_config_for_app(app)
+
